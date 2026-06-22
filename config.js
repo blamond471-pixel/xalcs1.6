@@ -1,7 +1,3 @@
-// Counter-Strike 1.6 Browser - Configuration
-// Set your valve.zip URL(s) here for Vercel deployment.
-// Array = chunked download, String = single URL
-
 var ASSETS_CONFIG = [
   'https://raw.githubusercontent.com/blamond471-pixel/xalcs1.6/main/chunks/valve.zip.part1',
   'https://raw.githubusercontent.com/blamond471-pixel/xalcs1.6/main/chunks/valve.zip.part2',

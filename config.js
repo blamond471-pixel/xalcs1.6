@@ -1,12 +1,12 @@
 // Counter-Strike 1.6 Browser - Configuration
-// Set your valve.zip URL here for Vercel deployment.
-// If using chunked assets (via jsDelivr), provide an array of URLs:
+// Set your valve.zip URL(s) here for Vercel deployment.
+// Array = chunked download, String = single URL
 
 var ASSETS_CONFIG = [
-  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part1',
-  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part2',
-  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part3',
-  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part4',
-  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part5',
-  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part6',
+  'https://raw.githubusercontent.com/blamond471-pixel/xalcs1.6/main/chunks/valve.zip.part1',
+  'https://raw.githubusercontent.com/blamond471-pixel/xalcs1.6/main/chunks/valve.zip.part2',
+  'https://raw.githubusercontent.com/blamond471-pixel/xalcs1.6/main/chunks/valve.zip.part3',
+  'https://raw.githubusercontent.com/blamond471-pixel/xalcs1.6/main/chunks/valve.zip.part4',
+  'https://raw.githubusercontent.com/blamond471-pixel/xalcs1.6/main/chunks/valve.zip.part5',
+  'https://raw.githubusercontent.com/blamond471-pixel/xalcs1.6/main/chunks/valve.zip.part6',
 ];

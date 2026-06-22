@@ -192,6 +192,11 @@
             }, { once: false });
 
             try {
+                // Ensure canvas is visible before creating WebGL context
+                canvas.style.opacity = '1';
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+
                 updateStatus("Fetching game assets...");
                 updateProgress(5);
 
@@ -224,8 +229,14 @@
                         alpha: false,
                         depth: true,
                         stencil: true,
-                        antialias: true,
-                        powerPreference: 'high-performance'
+                        antialias: false,
+                        powerPreference: 'default'
+                    }) || canvas.getContext('webgl', {
+                        alpha: false,
+                        depth: true,
+                        stencil: true,
+                        antialias: false,
+                        powerPreference: 'default'
                     }),
                     dynamicLibraries: [
                         "filesystem_stdio.wasm",

@@ -134,6 +134,10 @@
     <script type="module">
         import JSZip from 'https://cdn.skypack.dev/jszip@3.10.1';
 
+        const DB_NAME = 'cs16-cache';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'game';
+
         const loadingStatus = document.getElementById('loading-status');
         const progressBar = document.getElementById('progress-bar');
         const errorMsg = document.getElementById('error-msg');
@@ -155,10 +159,39 @@
             updateStatus('Failed to load');
         }
 
-        // Determine asset URL(s): query param > config > default
+        function openDB() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = (e) => {
+                    e.target.result.createObjectStore(STORE_NAME);
+                };
+                req.onsuccess = (e) => resolve(e.target.result);
+                req.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function getCachedBlob(db, key) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const req = tx.objectStore(STORE_NAME).get(key);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function setCachedBlob(db, key, blob) {
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const req = tx.objectStore(STORE_NAME).put(blob, key);
+                req.onsuccess = () => resolve();
+                req.onerror = () => reject(req.error);
+            });
+        }
+
         const params = new URLSearchParams(window.location.search);
         const raw = params.get('assets') || window.ASSETS_CONFIG || './valve.zip';
         const ASSETS_URLS = Array.isArray(raw) ? raw : [raw];
+        const CACHE_KEY = Array.isArray(raw) ? raw.join('|') : raw;
 
         async function fetchAllChunks(urls) {
             const allChunks = [];
@@ -180,6 +213,18 @@
             return new Blob(allChunks);
         }
 
+        async function getGameBuffer(db) {
+            const cached = await getCachedBlob(db, CACHE_KEY);
+            if (cached) {
+                updateStatus('Loading cached assets...');
+                updateProgress(30);
+                return cached.arrayBuffer();
+            }
+            const blob = await fetchAllChunks(ASSETS_URLS);
+            await setCachedBlob(db, CACHE_KEY, blob);
+            return blob.arrayBuffer();
+        }
+
         async function main() {
             fullscreenBtn.addEventListener('click', () => {
                 if (canvas.requestFullscreen) {
@@ -192,16 +237,16 @@
             }, { once: false });
 
             try {
-                // Ensure canvas is visible before creating WebGL context
                 canvas.style.opacity = '1';
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
 
-                updateStatus("Fetching game assets...");
-                updateProgress(5);
+                updateStatus("Initializing...");
+                updateProgress(0);
 
-                const blob = await fetchAllChunks(ASSETS_URLS);
-                const buffer = await blob.arrayBuffer();
+                const db = await openDB();
+                const buffer = await getGameBuffer(db);
+
                 updateProgress(55);
                 updateStatus("Extracting game files...");
 
@@ -223,21 +268,8 @@
                 updateStatus("Initializing game engine...");
 
                 Xash3D({
-                    arguments: ['-windowed', '-game', 'cstrike', '+_vgui_menus', '0'],
+                    arguments: ['-windowed', '-game', 'cstrike'],
                     canvas,
-                    ctx: canvas.getContext('webgl2', {
-                        alpha: false,
-                        depth: true,
-                        stencil: true,
-                        antialias: false,
-                        powerPreference: 'default'
-                    }) || canvas.getContext('webgl', {
-                        alpha: false,
-                        depth: true,
-                        stencil: true,
-                        antialias: false,
-                        powerPreference: 'default'
-                    }),
                     dynamicLibraries: [
                         "filesystem_stdio.wasm",
                         "libref_gles3compat.wasm",
@@ -261,7 +293,6 @@
                         fullscreenBtn.addEventListener('click', () => {
                             overlay.style.opacity = '0';
                             setTimeout(() => overlay.remove(), 500);
-                            canvas.style.opacity = '1';
                         }, { once: true });
                     },
                     locateFile: (p) => {
@@ -272,7 +303,8 @@
                             case 'filesystem_stdio.wasm':
                                 return 'https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/filesystem_stdio.wasm';
                             case 'libref_gles3compat.wasm':
-                                return 'https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/libref_gles3compat.wasm';
+                            case 'libref_webgl2.wasm':
+                                return 'https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/libref_webgl2.wasm';
                             case 'cl_dlls/menu_emscripten_wasm32.wasm':
                                 return 'https://cdn.jsdelivr.net/npm/cs16-client@latest/dist/cl_dll/menu_emscripten_wasm32.wasm';
                             case 'dlls/cs_emscripten_wasm32.so':

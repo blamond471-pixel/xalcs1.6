@@ -3,3 +3,5 @@ get_cs_assets/steamcmd
 valve.zip
 .vercel
 config.local.js
+
+!chunks/valve.zip.part*

@@ -1,8 +1,12 @@
 // Counter-Strike 1.6 Browser - Configuration
 // Set your valve.zip URL here for Vercel deployment.
-// Options:
-//   1. Upload valve.zip to cloud storage (S3, R2, etc.) and set the URL below
-//   2. Use URL query parameter: ?assets=https://...
-//   3. Place valve.zip in the project root (local dev only)
+// If using chunked assets (via jsDelivr), provide an array of URLs:
 
-var ASSETS_CONFIG = 'https://corsproxy.io/?url=https://github.com/blamond471-pixel/xalcs1.6/releases/download/v1/valve.zip';
+var ASSETS_CONFIG = [
+  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part1',
+  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part2',
+  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part3',
+  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part4',
+  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part5',
+  'https://cdn.jsdelivr.net/gh/blamond471-pixel/xalcs1.6@main/chunks/valve.zip.part6',
+];

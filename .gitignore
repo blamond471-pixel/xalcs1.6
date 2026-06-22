@@ -1,3 +1,5 @@
 get_cs_assets/cs
 get_cs_assets/steamcmd
 valve.zip
+.vercel
+config.local.js

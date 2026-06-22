@@ -2,30 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Counter-Strike 1.6 - Browser Edition</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            margin: 0;
             background: #000;
             overflow: hidden;
             font-family: Arial, sans-serif;
+            width: 100vw;
+            height: 100vh;
         }
 
         canvas {
             width: 100vw;
             height: 100vh;
-            top: 0;
-            left: 0;
+            display: block;
             position: fixed;
+            top: 0; left: 0;
             opacity: 0;
-            transition: opacity 1s ease-in;
+            transition: opacity 0.5s ease-in;
         }
 
-        /* Loading screen */
         #loading-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
+            top: 0; left: 0;
             width: 100vw;
             height: 100vh;
             background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
@@ -36,29 +37,29 @@
             color: #fff;
             z-index: 10;
             transition: opacity 0.5s ease-out;
+            padding: 20px;
         }
 
         #cs-title {
-            font-size: 2.2rem;
+            font-size: clamp(1.5rem, 5vw, 3rem);
             font-weight: bold;
             color: #ffcc00;
             text-shadow: 2px 2px 8px #000;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
+            text-align: center;
+            letter-spacing: 2px;
         }
 
-        /* Progress bar container */
         #progress-container {
-            width: 60%;
+            width: min(90%, 500px);
             height: 25px;
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid #ffcc00;
             border-radius: 5px;
             overflow: hidden;
-            margin-top: 10px;
             box-shadow: 0 0 10px #ffcc00;
         }
 
-        /* Progress bar fill */
         #progress-bar {
             width: 0%;
             height: 100%;
@@ -66,41 +67,67 @@
             transition: width 0.2s ease;
         }
 
-        /* Loading status text */
         #loading-status {
             margin-top: 15px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             text-align: center;
+            color: #ccc;
+            max-width: 90%;
         }
 
-        /* Fullscreen Button */
         #fullscreen-btn {
             display: none;
-            margin-top: 30px;
-            padding: 10px 20px;
+            margin-top: 25px;
+            padding: 14px 36px;
             background: #ffcc00;
             color: #000;
             border: none;
-            font-size: 1rem;
+            font-size: 1.1rem;
+            font-weight: bold;
             cursor: pointer;
-            border-radius: 5px;
-            transition: background 0.3s;
+            border-radius: 6px;
+            transition: background 0.3s, transform 0.2s;
+            letter-spacing: 1px;
         }
 
         #fullscreen-btn:hover {
             background: #ffaa00;
+            transform: scale(1.05);
+        }
+
+        #error-msg {
+            display: none;
+            margin-top: 15px;
+            padding: 12px 20px;
+            background: rgba(255, 0, 0, 0.15);
+            border: 1px solid #ff4444;
+            border-radius: 6px;
+            color: #ff6666;
+            font-size: 0.9rem;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 5px;
+            margin-bottom: 20px;
         }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/raw.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xash3d-fwgs@latest/dist/raw.js" crossorigin="anonymous"></script>
+    <script src="config.js"></script>
 </head>
 <body>
     <div id="loading-overlay">
         <div id="cs-title">COUNTER-STRIKE 1.6</div>
+        <div class="subtitle">Browser Edition</div>
         <div id="progress-container">
             <div id="progress-bar"></div>
         </div>
-        <div id="loading-status">Preparing to load...</div>
-        <button id="fullscreen-btn">Go Fullscreen</button>
+        <div id="loading-status">Initializing...</div>
+        <button id="fullscreen-btn">▶ PLAY</button>
+        <div id="error-msg"></div>
     </div>
     <canvas id="canvas"></canvas>
 
@@ -109,20 +136,30 @@
 
         const loadingStatus = document.getElementById('loading-status');
         const progressBar = document.getElementById('progress-bar');
+        const errorMsg = document.getElementById('error-msg');
+        const overlay = document.getElementById('loading-overlay');
+        const canvas = document.getElementById('canvas');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
 
         function updateStatus(msg) {
             loadingStatus.innerText = msg;
         }
 
         function updateProgress(percent) {
-            progressBar.style.width = percent + "%";
+            progressBar.style.width = Math.min(percent, 100) + "%";
         }
 
-        async function main() {
-            const overlay = document.getElementById('loading-overlay');
-            const canvas = document.getElementById('canvas');
-            const fullscreenBtn = document.getElementById('fullscreen-btn');
+        function showError(msg) {
+            errorMsg.style.display = 'block';
+            errorMsg.innerText = msg;
+            updateStatus('Failed to load');
+        }
 
+        // Determine asset URL: query param > config > default
+        const params = new URLSearchParams(window.location.search);
+        const ASSETS_URL = params.get('assets') || window.ASSETS_CONFIG || './valve.zip';
+
+        async function main() {
             fullscreenBtn.addEventListener('click', () => {
                 if (canvas.requestFullscreen) {
                     canvas.requestFullscreen();
@@ -131,40 +168,68 @@
                 } else if (canvas.msRequestFullscreen) {
                     canvas.msRequestFullscreen();
                 }
-            });
+            }, { once: false });
 
             try {
                 updateStatus("Fetching game assets...");
-                const res = await fetch('./valve.zip');
-                const buffer = await res.arrayBuffer();
+                updateProgress(5);
 
+                const res = await fetch(ASSETS_URL);
+                if (!res.ok) throw new Error(`Failed to fetch assets (HTTP ${res.status})`);
+                const contentLength = res.headers.get('Content-Length');
+                const reader = res.body.getReader();
+                const total = contentLength ? parseInt(contentLength) : 0;
+                const chunks = [];
+
+                if (total > 0) {
+                    let loaded = 0;
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        chunks.push(value);
+                        loaded += value.length;
+                        updateProgress(10 + Math.floor((loaded / total) * 45));
+                        updateStatus(`Downloading assets... (${(loaded / 1024 / 1024).toFixed(1)} MB)`);
+                    }
+                } else {
+                    // No content-length; fallback to full fetch
+                    const response = await fetch(ASSETS_URL);
+                    const buffer = await response.arrayBuffer();
+                    chunks.push(new Uint8Array(buffer));
+                    updateProgress(30);
+                }
+
+                const blob = new Blob(chunks);
+                const buffer = await blob.arrayBuffer();
+                updateProgress(55);
                 updateStatus("Extracting game files...");
+
                 const zip = await JSZip.loadAsync(buffer);
                 const files = {};
-
-                const entries = Object.keys(zip.files);
-                let totalFiles = entries.length;
+                const entries = Object.keys(zip.files).filter(p => !zip.files[p].dir);
                 let loaded = 0;
+                const totalFiles = entries.length;
 
                 await Promise.all(entries.map(async p => {
                     const file = zip.files[p];
-                    if (file.dir) return;
                     files[`/rodir/${p}`] = await file.async("uint8array");
                     loaded++;
-                    updateProgress(Math.floor((loaded / totalFiles) * 100));
+                    updateProgress(55 + Math.floor((loaded / totalFiles) * 30));
                     updateStatus(`Loading files... (${loaded}/${totalFiles})`);
                 }));
 
+                updateProgress(85);
                 updateStatus("Initializing game engine...");
 
                 Xash3D({
-                    arguments: ['-windowed', '-game', 'cstrike', '+_vgui_menus', '0'], 
+                    arguments: ['-windowed', '-game', 'cstrike', '+_vgui_menus', '0'],
                     canvas,
                     ctx: canvas.getContext('webgl2', {
                         alpha: false,
                         depth: true,
                         stencil: true,
-                        antialias: true
+                        antialias: true,
+                        powerPreference: 'high-performance'
                     }),
                     dynamicLibraries: [
                         "filesystem_stdio.wasm",
@@ -183,14 +248,14 @@
                         this.FS.chdir('/rodir');
 
                         updateProgress(100);
-                        updateStatus("Ready! Click 'Go Fullscreen' to play.");
+                        updateStatus("Ready! Press PLAY to start.");
                         fullscreenBtn.style.display = 'inline-block';
 
                         fullscreenBtn.addEventListener('click', () => {
-                            overlay.style.opacity = 0;
+                            overlay.style.opacity = '0';
                             setTimeout(() => overlay.remove(), 500);
-                            canvas.style.opacity = 1;
-                        });
+                            canvas.style.opacity = '1';
+                        }, { once: true });
                     },
                     locateFile: (p) => {
                         switch (p) {
@@ -213,8 +278,8 @@
                     },
                 });
             } catch (e) {
-                updateStatus("Failed to load game. Check console.");
                 console.error("Failed to load game:", e);
+                showError(e.message || "An unknown error occurred. Check the console for details.");
             }
         }
 
